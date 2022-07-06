@@ -1,5 +1,5 @@
-const kanapResult = document.getElementById("items");
-
+// Zone d'affichage des donnees de l'API
+const kanapResult = document.getElementById("items")
 
 // Fonction de récupération API ------------------------------------------------------------------------
 
@@ -12,7 +12,7 @@ async function getData() {
 getData()
 
 
-// Fonction de creation contenu hmtl index ------------------------------------------------------------------------
+// Fonction de creation contenu hmtl ------------------------------------------------------------------------
 
 function createKanapList(kanapsList) {
     Array.from(kanapsList).forEach(kanap => {
@@ -28,7 +28,7 @@ function createKanapList(kanapsList) {
     })
 }
 
-// Fonction de tri ------------------------------------------------------------------------
+// Fonction de tri alphabetique des kanaps------------------------------------------------------------------------
 
 function orderList(data) {
 
@@ -44,5 +44,3 @@ function orderList(data) {
     })
     return orderedData
 }
-
-// Fonction de tri ------------------------------------------------------------------------

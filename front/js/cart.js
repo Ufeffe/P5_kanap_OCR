@@ -8,10 +8,8 @@ let cart__items = document.getElementById("cart__items")
 
 // //Recuperation des donnees du localStorage
 let productsFromLocalStorage = JSON.parse(localStorage.getItem("product"))
-console.log("productsFromLocalStorage", productsFromLocalStorage);
 
 // Récupération des inputs du form
-
 const firstName = document.getElementById("firstName")
 const lastName = document.getElementById("lastName")
 const address = document.getElementById("address")
@@ -45,10 +43,8 @@ getData()
     })
     // -------------------------- Affichage des données du panier sur la page  --------------------------
     .then(mergedList => {
-        console.log("merged", mergedList);
         cartDisplayItems(mergedList)
-        totalQuantiteInCart.textContent = quantityInBasket(mergedList)
-        totalPriceInCart.textContent = priceInBasket(mergedList)
+        sumQuantityPrice(mergedList)
         return mergedList
     })
     .then(dataToUpdate => {
@@ -58,9 +54,9 @@ getData()
                 let dataToModify = e.target.closest('article')
                 deleteFromArray(dataToModify, dataToUpdate)
                 cart__items.removeChild(dataToModify)
+                updateLocalStorage(dataToUpdate)
             }
-            totalQuantiteInCart.textContent = quantityInBasket(dataToUpdate)
-            totalPriceInCart.textContent = priceInBasket(dataToUpdate)
+            sumQuantityPrice(dataToUpdate)
         })
 
         // -------------------- Modification des quantités des kanaps -----------------------
@@ -68,25 +64,34 @@ getData()
             if (e.target.className == "itemQuantity") {
                 let dataToModify = e.target.closest('article')
                 let newQuantity = e.target.value
-                if (quantityControl(newQuantity)) {
-                    quantityUpdateInBasket(dataToModify, dataToUpdate, newQuantity)
-                    totalQuantiteInCart.textContent = quantityInBasket(dataToUpdate)
-                    totalPriceInCart.textContent = priceInBasket(dataToUpdate)
+
+                if (newQuantity > 100) {
+                    e.target.value = 100
+                    newQuantity = 100
+                    window.alert("La quantité maximun autorisée est 100")
+                } else if (newQuantity < 1) {
+                    e.target.value = 1
+                    newQuantity = 1
+                    window.alert("La quantité minimale autorisée est 1")
                 }
+                quantityUpdateInBasket(dataToModify, dataToUpdate, newQuantity)
+                sumQuantityPrice(dataToUpdate)
+                updateLocalStorage(dataToUpdate)
+
             }
         })
 
         //-------------------------- Blocage du comportement par default + verification des champs du form--------------------------
         btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            let contact = formControl();
+            e.preventDefault()
+            let contact = formControl()
             let products = []
             dataToUpdate.forEach(element => {
                 products.push(element.id)
-
             });
             let finalArr = { contact, products }
-            console.log(finalArr);
+
+            // Debut de la methode POST pour obtention de l'orderID
 
             let postMethod = fetch('http://localhost:3000/api/products/order', {
                 method: 'POST',
@@ -95,29 +100,12 @@ getData()
                 },
                 body: JSON.stringify(finalArr)
             })
-
             postMethod
                 .then(res => res.json())
-                .then(data => console.log(data))
+                .then(data => document.location.href = `/front/html/confirmation.html?orderId=${data.orderId}`)
                 .catch(err => console.log(err))
-                // return finalArr
         })
     })
-
-
-// -------------- Controle de la quantité -------------
-
-
-
-function quantityControl(value) {
-    if (value < 1 || value > 100) {
-        window.alert("Sélectionnez une quantité entre 1 et 100")
-    } else {
-        return true
-    }
-}
-
-
 
 
 
@@ -150,13 +138,20 @@ function cartDisplayItems(data) {
     }
 }
 
-// -------------------------------- Calcul des quantités de kanaps dans le panier --------------------------------
+// -------------------------------- Appel des caclculs de quantités et de prix --------------------------------
 
+function sumQuantityPrice(arr) {
+    totalQuantiteInCart.textContent = quantityInBasket(arr)
+    totalPriceInCart.textContent = priceInBasket(arr)
+}
+
+// -------------------------------- Calcul des quantités de kanaps dans le panier --------------------------------
 
 function quantityInBasket(arr) {
     let sumQuantityKanapToDisplay = 0
     for (let i = 0; i < arr.length; i++) {
-        sumQuantityKanapToDisplay += +arr[i].quantity;
+        // Le + devant arr[i] permet de parse la valeur de quantity sinon il y a concaténation
+        sumQuantityKanapToDisplay += +arr[i].quantity
     }
     return sumQuantityKanapToDisplay
 }
@@ -195,10 +190,9 @@ function formControl() {
     const cityValue = city.value
     const emailValue = email.value
 
-    const regex = new RegExp('[a-z0-9]+@[a-z]+\.[a-z]{2,3}')
+    const regex = new RegExp('^[a-zA-Z0-9.-_]+@{1}[a-zA-Z0-9.-_]+[.]{1}[a-z]{2,3}$')
     let testEmail = regex.test(emailValue)
 
-    let collectedData = []
 
     // Vérification à la chaine de tous les champs du form
     setErrorMsg(firstName, firstNameValue == "" ? "Veuillez écrire votre Prénom" : "")
@@ -207,16 +201,18 @@ function formControl() {
     setErrorMsg(city, cityValue == "" ? "Veuillez écrire votre ville" : "")
     setErrorMsg(email, testEmail == false ? "Veuillez écrire votre valide" : "")
 
-    collectedData.push({
-        firstName: firstNameValue,
-        lastName: lastNameValue,
-        address: addressValue,
-        city: cityValue,
-        email: emailValue
-    })
+    // Création du tableau contact pour la méthode POST si tous les champs sont remplis
+    if (firstNameValue !== "" && lastNameValue !== "" && addressValue !== "" && cityValue !== "" && testEmail) {
+        collectedData = {
+            firstName: firstNameValue,
+            lastName: lastNameValue,
+            address: addressValue,
+            city: cityValue,
+            email: emailValue
+        }
+    }
     return collectedData
 }
-
 
 // --------------------------------- Fonction d'affiche des messages d'erreur ---------------------------------
 
@@ -229,4 +225,18 @@ function setErrorMsg(input, message) {
     positionToDisplay.textContent = message
 }
 
-// ----------------------------------------------------------------------
+// --------------------------- Mise a jour quantite et article du localstorage ---------------------------
+
+function updateLocalStorage(arr) {
+    const newLocalStorage = []
+    for (let i = 0; i < arr.length; i++) {
+
+        newLocalStorage.push({
+            id: arr[i].id,
+            color: arr[i].color,
+            quantity: arr[i].quantity
+        })
+    }
+    localStorage.setItem("product", JSON.stringify(newLocalStorage))
+
+}
