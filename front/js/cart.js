@@ -86,9 +86,11 @@ getData()
             e.preventDefault()
             let contact = formControl()
             let products = []
-            dataToUpdate.forEach(element => {
-                products.push(element.id)
-            });
+            if (products[0] !== undefined) {
+                dataToUpdate.forEach(element => {
+                    products.push(element.id)
+                })
+            }
             let finalArr = { contact, products }
 
             // Debut de la methode POST pour obtention de l'orderID
